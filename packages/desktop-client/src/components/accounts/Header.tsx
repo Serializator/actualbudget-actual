@@ -214,6 +214,7 @@ export function AccountHeader({
 
   const showImportButton = account && !account.closed;
   const showAddTransactionButton = accounts || account && !account.closed;
+  const showReconcileButton = account && !account.closed;
 
   function onToggleSplits() {
     if (tableRef.current) {
@@ -387,7 +388,7 @@ export function AccountHeader({
             />
           )}
           <View style={{ flex: '0 0 auto', marginLeft: 10 }}>
-            {account && (
+            {showReconcileButton && (
               <Tooltip
                 style={{
                   ...styles.tooltip,
