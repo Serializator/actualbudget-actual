@@ -46,7 +46,7 @@ vi.mock('../../hooks/useFeatureFlag', () => ({
   useFeatureFlag: () => false,
 }));
 
-const accounts = [generateAccount('Bank of America')];
+const accounts = [generateAccount('Bank of America'), generateAccount('Ally Savings', false, false, true)];
 vi.mock('../../hooks/useAccounts', () => ({
   useAccounts: () => accounts,
 }));
@@ -101,7 +101,7 @@ vi.mock('../../hooks/useCategories', () => ({
 
 const usualGroup = categoryGroups[1];
 
-function generateTransactions(
+function generateDefaultTransactions(
   count: number,
   splitAtIndexes: number[] = [],
   showError: boolean = false,
@@ -233,7 +233,7 @@ function initBasicServer() {
           return { data: accounts, dependencies: [] };
         case 'transactions':
           return {
-            data: generateTransactions(5, [6]),
+            data: generateDefaultTransactions(5, [6]),
             dependencies: [],
           };
         default:
@@ -273,8 +273,15 @@ function prettyDate(date: string) {
   return formatDate(parseDate(date, 'yyyy-MM-dd', new Date()), 'MM/dd/yyyy');
 }
 
-function renderTransactions(extraProps?: Partial<LiveTransactionTableProps>) {
-  let transactions = generateTransactions(5, [6]);
+function renderTransactions({
+  extraProps = {},
+  generateTransactions = () => generateDefaultTransactions(5, [6]),
+}: {
+  extraProps: Partial<LiveTransactionTableProps>;
+  generateTransactions: () => TransactionEntity[];
+} = {}) {
+  let transactions = generateTransactions();
+
   // Hardcoding the first value makes it easier for tests to do
   // various this
   transactions[0].amount = -2777;
@@ -726,9 +733,9 @@ describe('Transactions', () => {
   });
 
   test('dropdown payee displays on new transaction with account list column', async () => {
-    const { container, updateProps, queryByTestId } = renderTransactions({
+    const { container, updateProps, queryByTestId } = renderTransactions({ extraProps: {
       currentAccountId: null,
-    });
+    }});
     updateProps({ isAdding: true });
     expect(queryByTestId('new-transaction')).toBeTruthy();
 
@@ -909,11 +916,11 @@ describe('Transactions', () => {
   });
 
   test('escape closes the new transaction rows', async () => {
-    const { container, updateProps } = renderTransactions({
+    const { container, updateProps } = renderTransactions({ extraProps: {
       onCloseAddTransaction: () => {
         updateProps({ isAdding: false });
       },
-    });
+    }});
     updateProps({ isAdding: true });
 
     // While adding a transaction, pressing escape should close the

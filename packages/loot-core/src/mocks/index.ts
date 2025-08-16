@@ -15,6 +15,7 @@ export function generateAccount(
   name: AccountEntity['name'],
   isConnected?: boolean,
   offbudget?: boolean,
+  isClosed?: boolean,
 ): AccountEntity {
   const offlineAccount: AccountEntity = {
     id: uuidv4(),
@@ -23,7 +24,7 @@ export function generateAccount(
     sort_order: 0,
     last_reconciled: null,
     tombstone: 0,
-    closed: 0,
+    closed: isClosed ? 1 : 0,
     ...emptySyncFields(),
   };
 

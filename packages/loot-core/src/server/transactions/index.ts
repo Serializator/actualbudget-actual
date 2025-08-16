@@ -37,6 +37,21 @@ async function getTransactionsByIds(
   );
 }
 
+async function containsClosedAccount(
+  accounts,
+  transactions
+): Promise<boolean> {
+  const transactionsWithAccount = await getTransactionsByIds(
+    transactions.filter(transaction => !('account' in transaction))
+      .map(transaction => transaction.id)
+  );
+
+  return transactions.map(t1 => {
+    const acctId = t1.account || transactionsWithAccount.find(t2 => t1.id === t2.id).account;
+    return accounts.find(acct => acct.id === acctId);
+  }).some(acct => !!acct.closed);
+}
+
 export async function batchUpdateTransactions({
   added,
   deleted,
@@ -61,8 +76,10 @@ export async function batchUpdateTransactions({
     'SELECT * FROM accounts WHERE tombstone = 0',
   );
 
-  // We need to get all the payees of updated transactions _before_
-  // making changes
+  if ((added || deleted) && await containsClosedAccount(accounts, [...(added || []), ...(deleted || [])])) {
+    throw new Error(`Failed to add / remove transaction(s) to / from closed account(s).`);
+  }
+
   if (updated) {
     const descUpdatedIds = updated
       .filter(update => update.payee)
@@ -71,7 +88,18 @@ export async function batchUpdateTransactions({
     const transactions = await getTransactionsByIds(descUpdatedIds);
 
     for (let i = 0; i < transactions.length; i++) {
-      oldPayees.add(transactions[i].payee);
+      if (await containsClosedAccount(accounts, updated.filter(u => {
+        const transaction = transactions.find(trans => trans.id === u.id);
+        return transaction.amount != u.amount;
+      }))) {
+        throw new Error('Failed to update transaction(s) on closed account(s).');
+      }
+
+      // We need to get all the payees of updated transactions _before_
+      // making changes
+      for (let i = 0; i < transactions.filter(trans => trans.payee).length; i++) {
+        oldPayees.add(transactions[i].payee);
+      }
     }
   }
 

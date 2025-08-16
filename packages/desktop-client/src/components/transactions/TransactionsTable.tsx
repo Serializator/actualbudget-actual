@@ -1319,7 +1319,10 @@ const Transaction = memo(function Transaction({
           }}
           valueStyle={valueStyle}
           exposed={focusedField === 'account'}
-          onExpose={name => !isPreview && onEdit(id, name)}
+          onExpose={name => {
+            const acct = getAccountsById(accounts)[accountId];
+            return (!acct || !acct.closed) && !isPreview && onEdit(id, name);
+          }}
           onUpdate={async value => {
             // Only ever allow non-null values
             if (value) {
@@ -1591,7 +1594,7 @@ const Transaction = memo(function Transaction({
         valueStyle={valueStyle}
         textAlign="right"
         title={debit}
-        onExpose={name => !isPreview && onEdit(id, name)}
+        onExpose={name => (!account || !account.closed) && !isPreview && onEdit(id, name)}
         style={{
           ...(isParent && { fontStyle: 'italic' }),
           ...styles.tnum,
@@ -1617,7 +1620,7 @@ const Transaction = memo(function Transaction({
         valueStyle={valueStyle}
         textAlign="right"
         title={credit}
-        onExpose={name => !isPreview && onEdit(id, name)}
+        onExpose={name => (!account || !account.closed) && !isPreview && onEdit(id, name)}
         style={{
           ...(isParent && { fontStyle: 'italic' }),
           ...styles.tnum,
