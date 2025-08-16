@@ -212,6 +212,9 @@ export function AccountHeader({
   // Only show the ability to make linked transfers on multi-account views.
   const showMakeTransfer = !account;
 
+  const showImportButton = account && !account.closed;
+  const showAddTransactionButton = accounts || account && !account.closed;
+
   function onToggleSplits() {
     if (tableRef.current) {
       splitsExpanded.dispatch({
@@ -329,7 +332,7 @@ export function AccountHeader({
             </Button>
           )}
 
-          {account && !account.closed && (
+          {showImportButton && (
             <Button variant="bare" onPress={onImport}>
               <SvgDownloadThickBottom
                 width={13}
@@ -340,7 +343,7 @@ export function AccountHeader({
             </Button>
           )}
 
-          {!showEmptyMessage && (
+          {showAddTransactionButton && !showEmptyMessage && (
             <Button variant="bare" onPress={onAddTransaction}>
               <SvgAdd width={10} height={10} style={{ marginRight: 3 }} />
               <Trans>Add New</Trans>
