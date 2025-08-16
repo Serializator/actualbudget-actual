@@ -1134,4 +1134,45 @@ describe('Transactions', () => {
     expect(queryField(container, 'debit', '', 2).textContent).toBe('');
     expect(queryField(container, 'credit', '', 2).textContent).toBe('0.00');
   });
+
+  test('transactions from closed account are prefixed', async() => {
+    const { container, getTransactions } = renderTransactions({ generateTransactions: () => {
+      const transactions: TransactionEntity[] = [
+        ...generateTransaction(
+          {
+            account: accounts[1].id,
+            payee: 'alice-id',
+            category: usualGroup.categories[0].id,
+          }
+        ),
+      ];
+
+      return transactions;
+    }});
+
+    const accountField = queryField(container, 'account', '', 0);
+    expect(accountField.textContent).toMatch(/^Closed: /);
+  });
+
+  test('transaction from closed account cannot be updated', async() => {
+    const { container, getTransactions } = renderTransactions({ generateTransactions: () => {
+      const transactions: TransactionEntity[] = [
+        ...generateTransaction(
+          {
+            account: accounts[1].id,
+            payee: 'alice-id',
+            category: usualGroup.categories[0].id,
+          }
+        ),
+      ];
+
+      return transactions;
+    }});
+
+    for (const fieldName of ['account', 'debit', 'credit']) {
+      const field = queryField(container, fieldName, '', 0);
+      await userEvent.click(field.querySelector('div'));
+      expect(field.querySelector('input')).toBeFalsy();
+    }
+  });
 });

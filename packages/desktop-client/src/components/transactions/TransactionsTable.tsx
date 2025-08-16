@@ -1313,7 +1313,7 @@ const Transaction = memo(function Transaction({
           formatter={acctId => {
             const acct = acctId && getAccountsById(accounts)[acctId];
             if (acct) {
-              return acct.name;
+              return acct.closed ? t('Closed: {{ accountName }}', { accountName: acct.name }) : acct.name;
             }
             return '';
           }}
