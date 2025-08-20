@@ -167,6 +167,7 @@ export function Menu<const NameType = string>({
         return (
           <Button
             key={String(item.name)}
+            data-testid={String(item.name)}
             variant="bare"
             slot={slot}
             style={{

@@ -18,6 +18,7 @@ import { useSchedules } from '@desktop-client/hooks/useSchedules';
 import { useSelectedItems } from '@desktop-client/hooks/useSelected';
 import { pushModal } from '@desktop-client/modals/modalsSlice';
 import { useDispatch } from '@desktop-client/redux';
+import { useAccounts } from '@desktop-client/hooks/useAccounts';
 
 type SelectedTransactionsButtonProps = {
   getTransaction: (id: string) => TransactionEntity | undefined;
@@ -69,6 +70,7 @@ export function SelectedTransactionsButton({
 }: SelectedTransactionsButtonProps) {
   const { t } = useTranslation();
   const dispatch = useDispatch();
+  const allAccounts = useAccounts();
   const selectedItems = useSelectedItems();
   const selectedIds = useMemo(() => [...selectedItems], [selectedItems]);
 
@@ -125,6 +127,12 @@ export function SelectedTransactionsButton({
 
       return [t0, t1];
     }, [selectedIds, getTransaction]);
+
+  const anyClosedAccountSelected = useMemo(() => {
+    return selectedIds.map(getTransaction)
+      .map(trans => allAccounts.find(acct => acct.id === trans.account))
+      .filter(acct => !!acct.closed).length > 0;
+  }, [selectedIds, getTransaction, allAccounts]);
 
   const canBeTransfer = useMemo(() => {
     // only two selected
@@ -232,11 +240,11 @@ export function SelectedTransactionsButton({
     onShow,
     selectedIds,
   ]);
-  useHotkeys('u', () => onDuplicate(selectedIds), hotKeyOptions, [
+  useHotkeys('u', () => !anyClosedAccountSelected && onDuplicate(selectedIds), hotKeyOptions, [
     onDuplicate,
     selectedIds,
   ]);
-  useHotkeys('d', () => onDelete(selectedIds), hotKeyOptions, [
+  useHotkeys('d', () => !anyClosedAccountSelected && onDelete(selectedIds), hotKeyOptions, [
     onDelete,
     selectedIds,
   ]);
@@ -244,7 +252,7 @@ export function SelectedTransactionsButton({
     onEdit,
     selectedIds,
   ]);
-  useHotkeys('a', () => onEdit('account', selectedIds), hotKeyOptions, [
+  useHotkeys('a', () => !anyClosedAccountSelected && onEdit('account', selectedIds), hotKeyOptions, [
     onEdit,
     selectedIds,
   ]);
@@ -276,7 +284,7 @@ export function SelectedTransactionsButton({
   // edit amount (only if we're not in a merge context)
   useHotkeys(
     'm',
-    () => !canMerge && onEdit('amount', selectedIds),
+    () => !anyClosedAccountSelected && !canMerge && onEdit('amount', selectedIds),
     hotKeyOptions,
     [onEdit, selectedIds],
   );
@@ -323,9 +331,14 @@ export function SelectedTransactionsButton({
                 name: 'duplicate',
                 text: t('Duplicate'),
                 key: 'U',
-                disabled: ambiguousDuplication,
+                disabled: ambiguousDuplication || anyClosedAccountSelected,
               } as const,
-              { name: 'delete', text: t('Delete'), key: 'D' } as const,
+              {
+                name: 'delete',
+                text: t('Delete'),
+                key: 'D',
+                disabled: anyClosedAccountSelected,
+              } as const,
               ...(linked
                 ? [
                     {
@@ -394,11 +407,11 @@ export function SelectedTransactionsButton({
               Menu.line,
               { type: Menu.label, name: t('Edit field'), text: '' } as const,
               { name: 'date', text: t('Date'), key: 'T' } as const,
-              { name: 'account', text: t('Account'), key: 'A' } as const,
+              { name: 'account', text: t('Account'), key: 'A', disabled: anyClosedAccountSelected } as const,
               { name: 'payee', text: t('Payee'), key: 'P' } as const,
               { name: 'notes', text: t('Notes'), key: 'N' } as const,
               { name: 'category', text: t('Category'), key: 'C' } as const,
-              { name: 'amount', text: t('Amount'), key: 'M' } as const,
+              { name: 'amount', text: t('Amount'), key: 'M', disabled: anyClosedAccountSelected } as const,
               { name: 'cleared', text: t('Cleared'), key: 'L' } as const,
             ]),
       ]}
