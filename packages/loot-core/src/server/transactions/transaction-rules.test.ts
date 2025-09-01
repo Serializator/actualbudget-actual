@@ -4,6 +4,8 @@ import { aqlQuery } from '../aql';
 import * as db from '../db';
 import { loadMappings } from '../db/mappings';
 
+import { generateAccount, generateTransaction } from 'loot-core/mocks';
+
 import {
   getRules,
   loadRules,
@@ -125,8 +127,12 @@ describe('Transaction rules', () => {
 
     spy.mockRestore();
 
+    const account = { id: 'bank-of-america', name: 'Bank of America' }
+    await db.insertAccount(account);
+
     // Finally make sure the rule is actually in place and runs
     const transaction = await runRules({
+      account: account.id,
       date: '2019-05-10',
       notes: '',
       category: null,
@@ -149,7 +155,11 @@ describe('Transaction rules', () => {
     });
     expect(getRules().length).toBe(1);
 
+    const account = { id: 'bank-of-america', name: 'Bank of America', closed: 1 }
+    await db.insertAccount(account);
+
     let transaction = await runRules({
+      account: account.id,
       imported_payee: 'Kroger',
       notes: '',
       category: null,
@@ -166,6 +176,7 @@ describe('Transaction rules', () => {
     expect(getRules().length).toBe(1);
 
     transaction = await runRules({
+      account: account.id,
       imported_payee: 'Kroger',
       notes: '',
       category: null,
@@ -180,6 +191,7 @@ describe('Transaction rules', () => {
       conditions: [{ op: 'is', field: 'imported_payee', value: 'ABC' }],
     });
     transaction = await runRules({
+      account: account.id,
       imported_payee: 'ABC',
       notes: '',
       category: null,
@@ -201,7 +213,11 @@ describe('Transaction rules', () => {
     });
     expect(getRules().length).toBe(1);
 
+    const account = { id: 'bank-of-america', name: 'Bank of America', closed: 1 }
+    await db.insertAccount(account);
+
     let transaction = await runRules({
+      account: account.id,
       payee: 'Kroger',
       notes: '',
       category: null,
@@ -212,6 +228,7 @@ describe('Transaction rules', () => {
     await deleteRule(id);
     expect(getRules().length).toBe(0);
     transaction = await runRules({
+      account: account.id,
       payee: 'Kroger',
       notes: '',
       category: null,
@@ -242,7 +259,11 @@ describe('Transaction rules', () => {
     await loadRules();
     expect(getRules().length).toBe(2);
 
+    const account = { id: 'bank-of-america', name: 'Bank of America', closed: 1 }
+    await db.insertAccount(account);
+
     let transaction = await runRules({
+      account: account.id,
       imported_payee: 'blah Lowes blah',
       payee: null,
       category: null,
@@ -250,6 +271,7 @@ describe('Transaction rules', () => {
     expect(transaction.payee).toBe('lowes');
 
     transaction = await runRules({
+      account: account.id,
       imported_payee: 'kroger',
       category: null,
     });
@@ -353,19 +375,21 @@ describe('Transaction rules', () => {
       actions: [{ op: 'set', field: 'notes', value: 'got it' }],
     });
 
-    expect(
-      await runRules({
-        imported_payee: '123 kroger',
-        date: '2020-08-11',
-        amount: 50,
-      }),
-    ).toEqual({
-      date: '2020-08-11',
+    const account = { id: 'bank-of-america', name: 'Bank of America', closed: 1 }
+    await db.insertAccount(account);
+
+    const transaction = await runRules({
+      account: account.id,
       imported_payee: '123 kroger',
-      payee: 'kroger4',
+      date: '2020-08-11',
       amount: 50,
-      notes: 'got it2',
-    });
+    })
+
+    expect(transaction.date).toBe('2020-08-11');
+    expect(transaction.imported_payee).toBe('123 kroger');
+    expect(transaction.payee).toBe('kroger4');
+    expect(transaction.amount).toBe(50);
+    expect(transaction.notes).toBe('got it2');
   });
 
   test('transactions can be queried by rule', async () => {
@@ -988,6 +1012,34 @@ describe('Learning categories', () => {
     const [rule] = getRules();
     expect(rule.conditions[0].field).toBe('imported_payee');
     expect(rule.actions[0].field).toBe('payee');
+  });
+
+  test('update amount transaction closed account', async() => {
+    await loadData();
+
+    await insertRule({
+      stage: null,
+      conditionsOp: 'and',
+      conditions: [{ op: 'is', field: 'payee', value: 'payed-to' }],
+      actions: [
+        { op: 'set', field: 'account', value: 'another-account' },
+        { op: 'set', field: 'amount', value: 1337 },
+      ],
+    });
+
+    const account = { id: 'bank-of-america', name: 'Bank of America', closed: 1 }
+    await db.insertAccount(account);
+
+    const transaction = generateTransaction({ account: account.id })[0];
+    await db.insertTransaction(transaction);
+
+    const changed = await runRules(
+      transaction,
+      new Map([[account.id, account]])
+    );
+
+    expect(changed.account).toBe(transaction.account);
+    expect(changed.amount).toBe(transaction.amount);
   });
 
   // TODO: write tests for split transactions

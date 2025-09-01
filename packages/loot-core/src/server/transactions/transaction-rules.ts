@@ -299,6 +299,13 @@ export async function runRules(
   );
 
   for (let i = 0; i < rules.length; i++) {
+    if (rules[i].actions.some(action => (
+      action.op === 'set' && ['account', 'amount'].includes(action.field)
+    ))) {
+      // Filter out rules which affect the debit or credit amount of transactions when the account is closed.
+      continue
+    }
+
     finalTrans = rules[i].apply(finalTrans);
   }
 
